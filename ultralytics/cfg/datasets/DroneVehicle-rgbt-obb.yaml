@@ -1,0 +1,15 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+# DroneVehicle RGBT 数据集（旋转框 OBB 版本）
+# 标签由 transform_DroneVehicle_to_YOLO_OBB.py 生成，txt 与可见光图片同目录（Method 1 布局）
+# 红外配对：pairs_rgb_ir=['img', 'imgr']（trainimg->trainimgr / valimg->valimgr / testimg->testimgr）
+
+path: /mnt/dataset/DroneVehicle
+train: train/trainimg # 17990 对
+val: val/valimg # 1469 对
+test: test/testimg # 8980 对
+
+# number of classes
+nc: 5
+
+# class names
+names: [ 'car', 'truck', 'bus', 'van', 'freight_car' ]
