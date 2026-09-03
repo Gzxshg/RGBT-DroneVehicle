@@ -140,12 +140,20 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# datasets and projects (ignore /datasets dir at root only to allow for docs/en/datasets dir)
+# datasets and projects
 /datasets
 runs/
 wandb/
 .DS_Store
 result3/
+
+# benchmark methods: datasets, training logs, checkpoints and eval outputs
+methods/*/data/
+methods/*/logs/
+methods/*/results/
+methods/*/.github/
+*.pth
+*.out
 # Neural Network weights -----------------------------------------------------------------------------------------------
 weights/
 *.weights
@@ -173,11 +181,11 @@ pnnx*
 
 # calibration image
 calibration_*.npy
-/PVELAD/
-/train_RGBT_mine.py
-/train_RGBT_kaist_C.py
-#/transform_COCO_to_RGBT.py
-#/train_RGBT_kaist.py
-/ultralytics/cfg/datasets/dota8_MINE.yaml
-/val2.py
-/heatmap_RGBT_test.py
+
+# personal local files (unanchored so they match under baselines/yolov11_rgbt/ too)
+PVELAD/
+train_RGBT_mine.py
+train_RGBT_kaist_C.py
+dota8_MINE.yaml
+val2.py
+heatmap_RGBT_test.py
