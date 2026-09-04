@@ -16,6 +16,7 @@ import os
 import sys
 import time
 
+import numpy as np
 import torch
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,16 +34,19 @@ METRIC_NAMES = ['AP', 'AP50', 'AP75', 'APS', 'APM', 'APL',
 
 
 def per_class_ap(coco_eval, cat_ids):
-    """Re-run COCOeval per category, return {name: AP}."""
-    from pycocotools.cocoeval import COCOeval
+    """Per-class AP@[.5:.95] from the accumulated precision tensor.
+
+    NOTE: coco_eval.cocoDt only holds the last evaluated batch in this repo
+    (CocoEvaluator.update overwrites it per batch), so re-running COCOeval on
+    it is wrong. The merged evalImgs accumulated over all images are correct
+    -> read precision[T, R, K, A, M] and slice area='all', maxDets=100.
+    """
+    prec = coco_eval.eval['precision']  # [T, R, K, A, M]
     out = {}
-    for cid, name in zip(cat_ids, CLASSES):
-        e = COCOeval(coco_eval.cocoGt, coco_eval.cocoDt, 'bbox')
-        e.params.catIds = [cid]
-        e.evaluate()
-        e.accumulate()
-        e.summarize()
-        out[name] = float(e.stats[0])
+    for k, (cid, name) in enumerate(zip(cat_ids, CLASSES)):
+        p = prec[:, :, k, 0, -1]
+        p = p[p > -1]
+        out[name] = float(np.mean(p)) if p.size else None
     return out
 
 
