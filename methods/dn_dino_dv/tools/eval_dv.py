@@ -84,6 +84,8 @@ def main():
     parser.add_argument('--fps_warmup', type=int, default=50)
     parser.add_argument('--metrics_out', type=str, default='',
                         help='where to write metrics json; default <output_dir>/eval_metrics.json')
+    parser.add_argument('--fps_only', action='store_true',
+                        help='skip COCO eval, only measure inference speed (no json written)')
     args = parser.parse_args()
     args.eval = True
     args.resume = ''
@@ -105,28 +107,30 @@ def main():
     base_ds = get_coco_api_from_dataset(dataset_val)
 
     os.makedirs(args.output_dir, exist_ok=True)
-    test_stats, coco_evaluator = evaluate(
-        model, criterion, postprocessors, data_loader_val, base_ds, device,
-        args.output_dir, args=args)
-
     metrics = {}
-    coco12 = test_stats['coco_eval_bbox']
-    metrics['coco'] = {n: float(v) for n, v in zip(METRIC_NAMES, coco12)}
-    print('COCO bbox:', json.dumps(metrics['coco'], indent=2))
+    if not args.fps_only:
+        test_stats, coco_evaluator = evaluate(
+            model, criterion, postprocessors, data_loader_val, base_ds, device,
+            args.output_dir, args=args)
 
-    cat_ids = coco_evaluator.coco_eval['bbox'].params.catIds
-    metrics['per_class_ap'] = per_class_ap(coco_evaluator.coco_eval['bbox'],
-                                           cat_ids)
-    print('Per-class AP:', json.dumps(metrics['per_class_ap'], indent=2))
+        coco12 = test_stats['coco_eval_bbox']
+        metrics['coco'] = {n: float(v) for n, v in zip(METRIC_NAMES, coco12)}
+        print('COCO bbox:', json.dumps(metrics['coco'], indent=2))
+
+        cat_ids = coco_evaluator.coco_eval['bbox'].params.catIds
+        metrics['per_class_ap'] = per_class_ap(coco_evaluator.coco_eval['bbox'],
+                                               cat_ids)
+        print('Per-class AP:', json.dumps(metrics['per_class_ap'], indent=2))
 
     metrics['speed'] = measure_fps(model, postprocessors, dataset_val, device,
                                    warmup=args.fps_warmup, num=args.fps_num)
     print('Speed:', json.dumps(metrics['speed'], indent=2))
 
-    out = args.metrics_out or os.path.join(args.output_dir, 'eval_metrics.json')
-    with open(out, 'w') as f:
-        json.dump(metrics, f, indent=2)
-    print('metrics written to', out)
+    if not args.fps_only:
+        out = args.metrics_out or os.path.join(args.output_dir, 'eval_metrics.json')
+        with open(out, 'w') as f:
+            json.dump(metrics, f, indent=2)
+        print('metrics written to', out)
 
 
 if __name__ == '__main__':

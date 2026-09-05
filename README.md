@@ -20,7 +20,7 @@ datasets_tools/        # DroneVehicle 标注转换 / 分析脚本
 | --- | --- | --- |
 | C2Former (TGRS 2024) | RGB-IR，OBB | 72.5 |
 | YOLO11n-RGBT-midfusion-obb（`baselines/yolov11_rgbt`） | RGB-IR，OBB | **79.4** |
-| DN-DINO（`methods/dn_dino_dv`） | 单模态，HBB | 实验中 |
+| DN-DINO（`methods/dn_dino_dv`） | 单模态，HBB | 口径不同，不直接可比；val/HBB 结果见 `methods/dn_dino_dv/results/dv_full_report.md` |
 
 口径说明：DroneVehicle 可见光侧标注在夜景图像上严重缺标，官方评测标签与**红外侧**标注一致，因此所有方法的训练/评测标签均由红外侧标注生成（详见 `baselines/yolov11_rgbt/README.md`）。
 

@@ -163,6 +163,12 @@ def get_args_parser():
     parser.add_argument('--coco_path', type=str, required=True)
     parser.add_argument('--coco_panoptic_path', type=str)
     parser.add_argument('--remove_difficult', action='store_true')
+    parser.add_argument('--pair_ir', action='store_true',
+                        help='load the paired IR image alongside RGB (6-channel [rgb|ir] input); '
+                             'supervision stays the single annotation json (IR-side canonical GT)')
+    parser.add_argument('--fusion', default='', choices=['', 'naive_concat1x1'],
+                        help="naive_concat1x1: two independent R50 backbones + per-scale Conv1x1([F_rgb;F_ir]) "
+                             "(requires --pair_ir)")
     parser.add_argument('--fix_size', action='store_true', 
                         help="Using for debug only. It will fix the size of input images to the maximum.")
 
@@ -218,6 +224,8 @@ def build_model_main(args):
 def main(args):
     utils.init_distributed_mode(args)
     # torch.autograd.set_detect_anomaly(True)
+    if args.fusion and not args.pair_ir:
+        raise ValueError('--fusion requires --pair_ir (6-channel paired input)')
     
     # setup logger
     os.makedirs(args.output_dir, exist_ok=True)

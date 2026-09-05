@@ -113,6 +113,38 @@ class Backbone(BackboneBase):
             self.strides[-1] = self.strides[-1] // 2
 
 
+class DualBackboneBase(nn.Module):
+    """Two independent ResNet-50 backbones (RGB + IR) with per-scale 1x1 concat fusion.
+
+    Input NestedTensor has 6 channels ([rgb|ir], both ImageNet-normalized 3ch).
+    Each backbone produces the same 3 scales (strides 8/16/32, channels
+    512/1024/2048) as the single-modality Backbone; per scale the fused feature
+    is Conv1x1([F_rgb; F_ir]) projecting 2C -> C, so downstream (input_proj,
+    derived 4th level, transformer) sees exactly the original channel widths.
+
+    B3b naive-fusion experiment: no cross-attention / offsets / gating here.
+    """
+
+    def __init__(self, name: str, train_backbone: bool, return_interm_layers: bool, dilation: bool):
+        super().__init__()
+        self.rgb = Backbone(name, train_backbone, return_interm_layers, dilation)
+        self.ir = Backbone(name, train_backbone, return_interm_layers, dilation)
+        self.strides = self.rgb.strides
+        self.num_channels = self.rgb.num_channels
+        self.fuse = nn.ModuleList([nn.Conv2d(2 * c, c, kernel_size=1) for c in self.num_channels])
+
+    def forward(self, tensor_list: NestedTensor):
+        t = tensor_list.tensors
+        assert t.shape[1] == 6, f'dual-modality input must be 6 channels [rgb|ir], got {t.shape}'
+        xs_rgb = self.rgb(NestedTensor(t[:, :3], tensor_list.mask))
+        xs_ir = self.ir(NestedTensor(t[:, 3:], tensor_list.mask))
+        out: Dict[str, NestedTensor] = {}
+        for name, x_rgb in xs_rgb.items():
+            fused = self.fuse[int(name)](torch.cat([x_rgb.tensors, xs_ir[name].tensors], dim=1))
+            out[name] = NestedTensor(fused, x_rgb.mask)
+        return out
+
+
 class Joiner(nn.Sequential):
     def __init__(self, backbone, position_embedding):
         super().__init__(backbone, position_embedding)
@@ -137,6 +169,9 @@ def build_backbone(args):
     position_embedding = build_position_encoding(args)
     train_backbone = args.lr_backbone > 0
     return_interm_layers = args.masks or (args.num_feature_levels > 1)
-    backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+    if getattr(args, 'fusion', '') == 'naive_concat1x1':
+        backbone = DualBackboneBase(args.backbone, train_backbone, return_interm_layers, args.dilation)
+    else:
+        backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     model = Joiner(backbone, position_embedding)
     return model
